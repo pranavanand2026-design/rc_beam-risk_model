@@ -1,0 +1,9 @@
+paths:
+  raw: data/raw
+  processed: data/processed
+  outputs: outputs
+  models: models
+data:
+  file: dataset.xlsx
+  sheet: 02_NumericaModelData
+  target_col: LimitState
