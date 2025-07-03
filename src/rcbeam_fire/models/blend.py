@@ -83,3 +83,40 @@ def prepare_data(
         }
         return X, y, le, list(le.classes_), meta
     return X, y, le, list(le.classes_)
+
+
+try:
+    from imblearn.over_sampling import BorderlineSMOTE, SMOTE
+    from imblearn.combine import SMOTEENN
+except Exception as exc:  # pragma: no cover
+    raise ImportError("imblearn is required for the hybrid classifier") from exc
+
+
+def targeted_smote(X, y, classes_: List[str], strength_ratio=1.0, nofail_ratio=0.7, random_state=42):
+    _, counts = np.unique(y, return_counts=True)
+    majority = int(counts.max())
+    name_to_idx = {name: i for i, name in enumerate(classes_)}
+    strat = {}
+    if "Strength Failure" in name_to_idx:
+        strat[name_to_idx["Strength Failure"]] = int(majority * strength_ratio)
+    if "No Failure" in name_to_idx:
+        target_nf = int(majority * nofail_ratio)
+        cur_nf = counts[name_to_idx["No Failure"]]
+        strat[name_to_idx["No Failure"]] = max(target_nf, int(cur_nf))
+    if not strat:
+        return X, y
+    sm = SMOTE(random_state=random_state, sampling_strategy=strat, k_neighbors=5)
+    return sm.fit_resample(X, y)
+
+
+def resample_with_strategy(X, y, classes, strategy: str, random_state: int = 42):
+    strategy = strategy.lower()
+    if strategy == "targeted":
+        return targeted_smote(X, y, classes, strength_ratio=1.0, nofail_ratio=0.7, random_state=random_state)
+    if strategy == "borderline":
+        sampler = BorderlineSMOTE(kind="borderline-1", k_neighbors=5, random_state=random_state)
+        return sampler.fit_resample(X, y)
+    if strategy == "smoteenn":
+        sampler = SMOTEENN(random_state=random_state)
+        return sampler.fit_resample(X, y)
+    raise ValueError(f"Unknown resampler strategy: {strategy}")
