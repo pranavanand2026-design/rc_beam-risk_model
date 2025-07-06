@@ -120,3 +120,37 @@ def resample_with_strategy(X, y, classes, strategy: str, random_state: int = 42)
         sampler = SMOTEENN(random_state=random_state)
         return sampler.fit_resample(X, y)
     raise ValueError(f"Unknown resampler strategy: {strategy}")
+
+
+from typing import Optional, Tuple
+
+try:
+    from xgboost import DMatrix, XGBClassifier, train as xgb_train
+except Exception:  # pragma: no cover - optional dependency
+    DMatrix = None
+    XGBClassifier = None
+    xgb_train = None
+
+
+def make_xgb(num_classes: int, monotone: Optional[List[int]] = None):
+    if XGBClassifier is None:
+        raise ImportError("xgboost is required for the hybrid classifier.")
+    mono = None
+    if monotone is not None:
+        mono = "(" + ",".join(str(int(m)) for m in monotone) + ")"
+    return XGBClassifier(
+        objective="multi:softprob",
+        num_class=num_classes,
+        n_estimators=650,
+        learning_rate=0.06,
+        max_depth=6,
+        min_child_weight=10,
+        subsample=0.9,
+        colsample_bytree=0.9,
+        reg_lambda=1.5,
+        reg_alpha=0.0,
+        eval_metric="mlogloss",
+        tree_method="hist",
+        random_state=42,
+        monotone_constraints=mono,
+    )
