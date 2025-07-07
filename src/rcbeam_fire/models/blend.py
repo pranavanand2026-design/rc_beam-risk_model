@@ -154,3 +154,81 @@ def make_xgb(num_classes: int, monotone: Optional[List[int]] = None):
         random_state=42,
         monotone_constraints=mono,
     )
+
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+import matplotlib.pyplot as plt
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+)
+
+
+@dataclass
+class HybridResult:
+    name: str
+    acc: float
+    bacc: float
+    macro_f1: float
+    report_csv: Path
+    cm_png: Path
+    model_path: Path
+    thresholds: Dict[str, float]
+    roc_png: Path
+    pr_png: Path
+    topk_png: Path
+    metrics_json: Path
+    data_stats_json: Optional[Path] = None
+    summary_json: Optional[Path] = None
+    bootstrap_json: Optional[Path] = None
+
+
+def save_confusion_matrix(
+    cm: np.ndarray, labels: List[str], out_path: Path, title: str = "Confusion", normalize: bool = False
+):
+    """Save a confusion matrix with an accessible colormap and annotations.
+
+    Args:
+        cm: integer confusion matrix (rows=true, cols=pred)
+        labels: class names in order
+        out_path: PNG path
+        title: plot title
+        normalize: if True, annotate by row-normalised values
+    """
+    data = cm.astype(float)
+    if normalize:
+        row_sums = data.sum(axis=1, keepdims=True)
+        row_sums[row_sums == 0] = 1.0
+        data = np.divide(data, row_sums)
+
+    plt.figure(figsize=(6, 5))
+    im = plt.imshow(data, interpolation="nearest", cmap="Blues")
+    plt.xticks(ticks=np.arange(len(labels)), labels=labels, rotation=20)
+    plt.yticks(ticks=np.arange(len(labels)), labels=labels)
+    plt.title(title)
+    cbar = plt.colorbar(im, fraction=0.046, pad=0.04)
+    cbar.ax.set_ylabel("Count" if not normalize else "Proportion", rotation=270, labelpad=15)
+
+    # Annotate cells
+    thresh = data.max() / 2.0 if data.size else 0.0
+    for (i, j), _ in np.ndenumerate(data):
+        val = data[i, j]
+        txt = f"{val:.2f}" if normalize else f"{int(cm[i, j])}"
+        plt.text(
+            j,
+            i,
+            txt,
+            ha="center",
+            va="center",
+            fontsize=9,
+            color="white" if val > thresh else "black",
+        )
+
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close()
