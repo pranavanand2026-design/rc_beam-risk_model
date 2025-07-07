@@ -5,3 +5,7 @@ matplotlib==3.8.4
 joblib==1.4.2
 pyyaml==6.0.2
 openpyxl==3.1.5
+
+### Models / imbalance
+xgboost==2.0.3
+imbalanced-learn==0.12.3
