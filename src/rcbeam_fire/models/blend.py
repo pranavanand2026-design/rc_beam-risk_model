@@ -232,3 +232,75 @@ def save_confusion_matrix(
     plt.tight_layout()
     plt.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close()
+
+
+from sklearn.preprocessing import StandardScaler
+from ..config import load_config
+from ..utils.io import ensure_dirs, load_processed_dataset
+
+
+class LDAMDRWXGB:
+    """XGBoost helper with LDAM/DRW, logit-adjusted, or focal objectives."""
+
+    def __init__(
+        self,
+        classes: List[str],
+        random_state: int = 42,
+        mode: str = "ldam_drw",
+        resampler: str = "borderline",
+        focal_gamma: float = 2.0,
+    ):
+        if xgb_train is None or DMatrix is None:
+            raise ImportError("xgboost is required for LDAMDRWXGB.")
+        self.classes = classes
+        self.scaler: Optional[StandardScaler] = None
+        self.booster = None
+        self.random_state = random_state
+        self.thresholds: Dict[str, float] = {}
+        self.mode = mode if mode in OBJECTIVE_MODES else "ldam_drw"
+        self.resampler = resampler if resampler in RESAMPLERS else "borderline"
+        self.focal_gamma = focal_gamma
+        self.log_priors: Optional[np.ndarray] = None
+        self.params_: Optional[Dict[str, float]] = None
+        self.margins_: Optional[List[float]] = None
+        self.class_weights_: Optional[List[float]] = None
+        self.resampled_counts_: Optional[Dict[str, int]] = None
+
+    @staticmethod
+    def _class_balanced_weights(y, beta=0.999):
+        from collections import Counter
+
+        c = Counter(y)
+        cls = sorted(c.keys())
+        eff = np.array([1.0 - beta ** c[i] for i in cls], float)
+        eff[eff <= 0] = 1e-8
+        w = (1.0 - beta) / eff
+        w = w / w.mean()
+        out = np.zeros(max(cls) + 1, float)
+        for i, k in enumerate(cls):
+            out[k] = w[i]
+        return out
+
+    @staticmethod
+    def _compute_margins_ldam(y, num_classes, counts, max_m=0.5):
+        n = np.array([counts.get(c, 1) for c in range(num_classes)], float)
+        m = 1.0 / (np.power(n, 0.25) + 1e-12)
+        return m * (max_m / m.max())
+
+    @staticmethod
+    def _ldam_softmax_obj(margins, num_classes):
+        def _obj(preds, dtrain):
+            y = dtrain.get_label().astype(int)
+            N, K = y.shape[0], num_classes
+            logits = preds.reshape(N, K)
+            logits[np.arange(N), y] -= margins[y]
+            m = logits.max(axis=1, keepdims=True)
+            p = np.exp(logits - m)
+            p = p / p.sum(axis=1, keepdims=True)
+            oh = np.zeros_like(p)
+            oh[np.arange(N), y] = 1.0
+            grad = (p - oh).reshape(-1)
+            hess = (p * (1.0 - p)).reshape(-1)
+            return grad, hess
+
+        return _obj
