@@ -425,3 +425,51 @@ class LDAMDRWXGB:
                 verbose_eval=False,
             )
         self.booster = booster
+
+
+from sklearn.model_selection import train_test_split
+
+
+def evaluate_probs_with_thresholds(
+    proba: np.ndarray, y_true: np.ndarray, classes: List[str], th: Dict[str, float]
+) -> Tuple[np.ndarray, Dict]:
+    pred_idx = proba.argmax(axis=1).copy()
+    for ci, cname in enumerate(classes):
+        t = th.get(cname)
+        if t is None:
+            continue
+        pred_idx[proba[:, ci] >= t] = ci
+    report = classification_report(y_true, pred_idx, target_names=classes, output_dict=True, zero_division=0)
+    return pred_idx, report
+
+
+def tune_thresholds(proba: np.ndarray, y_true: np.ndarray, classes: List[str]) -> Tuple[Dict[str, float], float]:
+    cand = {c: np.linspace(0.25, 0.60, 8) for c in classes}
+    cand.pop("Deflection Failure", None)
+    keys = list(cand.keys())
+    best_f1, best = -1.0, {}
+
+    def recurse(i, cur):
+        nonlocal best_f1, best
+        if i == len(keys):
+            th = cur.copy()
+            pred = proba.argmax(axis=1).copy()
+            for ci, cname in enumerate(classes):
+                t = th.get(cname)
+                if t is not None:
+                    pred[proba[:, ci] >= t] = ci
+            f1 = f1_score(y_true, pred, average="macro")
+            if f1 > best_f1:
+                best_f1, best = f1, th.copy()
+            return
+        k = keys[i]
+        for t in cand[k]:
+            cur[k] = float(t)
+            recurse(i + 1, cur)
+
+    recurse(0, {})
+    return best, best_f1
+
+
+def blend_probs(p_a: np.ndarray, p_b: np.ndarray, w: float) -> np.ndarray:
+    return w * p_a + (1.0 - w) * p_b
