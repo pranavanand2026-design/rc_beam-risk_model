@@ -304,3 +304,124 @@ class LDAMDRWXGB:
             return grad, hess
 
         return _obj
+
+    def _focal_softmax_obj(self, num_classes: int, gamma: float):
+        def _obj(preds, dtrain):
+            y = dtrain.get_label().astype(int)
+            logits = preds.reshape(-1, num_classes)
+            logits -= logits.max(axis=1, keepdims=True)
+            exp = np.exp(logits)
+            p = exp / exp.sum(axis=1, keepdims=True)
+            pt = p[np.arange(p.shape[0]), y]
+            pt = np.clip(pt, 1e-12, 1.0)
+            factor = (1.0 - pt) ** gamma
+
+            grad = p.copy()
+            grad[np.arange(p.shape[0]), y] -= 1.0
+            grad *= factor[:, None]
+
+            log_pt = np.log(pt)
+            aux = gamma * (1.0 - pt) ** (gamma - 1.0) * pt * log_pt
+            grad[np.arange(p.shape[0]), y] -= aux
+            grad += aux[:, None] * p
+
+            hess = factor[:, None] * (p * (1.0 - p))
+            return grad.reshape(-1), hess.reshape(-1)
+
+        return _obj
+
+    def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
+        Xs = self.scaler.transform(X.values) if self.scaler is not None else X.values
+        if self.mode == "logit_adjusted" and self.log_priors is not None:
+            logits = self.booster.predict(DMatrix(Xs), output_margin=True).reshape(-1, len(self.classes))
+            logits = logits - self.log_priors
+            logits -= logits.max(axis=1, keepdims=True)
+            exp = np.exp(logits)
+            return exp / exp.sum(axis=1, keepdims=True)
+        return self.booster.predict(DMatrix(Xs))
+
+    def fit(self, X_tr: pd.DataFrame, y_tr: np.ndarray, X_val: pd.DataFrame, y_val: np.ndarray):
+        from collections import Counter as Cn
+
+        K = len(self.classes)
+        self.scaler = StandardScaler().fit(X_tr.values)
+        Xs_tr = self.scaler.transform(X_tr.values)
+        Xs_val = self.scaler.transform(X_val.values)
+
+        cnt = Cn(y_tr)
+        total = sum(cnt.values())
+        priors = np.array([cnt.get(i, 1) / total for i in range(K)], dtype=float)
+        self.log_priors = np.log(np.clip(priors, 1e-12, 1.0))
+
+        Xs_tr_res, y_tr_res = resample_with_strategy(
+            Xs_tr, y_tr, self.classes, self.resampler, random_state=self.random_state
+        )
+        counts_res = {self.classes[int(c)]: int((y_tr_res == c).sum()) for c in np.unique(y_tr_res)}
+        for cname in self.classes:
+            counts_res.setdefault(cname, 0)
+        self.resampled_counts_ = counts_res
+
+        margins = self._compute_margins_ldam(y_tr_res, K, Cn(y_tr_res), max_m=0.5) if self.mode == "ldam_drw" else np.zeros(K)
+        cbw = self._class_balanced_weights(y_tr_res, beta=0.999)
+        self.margins_ = margins.tolist()
+        self.class_weights_ = cbw.tolist()
+        w_train = np.array([cbw[c] for c in y_tr_res], float)
+
+        dtrain = DMatrix(Xs_tr_res, label=y_tr_res, weight=w_train)
+        dval = DMatrix(Xs_val, label=y_val)
+
+        params = {
+            "num_class": K,
+            "eta": 0.05,
+            "max_depth": 5,
+            "subsample": 0.9,
+            "colsample_bytree": 0.9,
+            "lambda": 1.0,
+            "objective": "multi:softprob",
+            "eval_metric": "mlogloss",
+            "nthread": -1,
+            "seed": self.random_state,
+        }
+        self.params_ = {k: float(v) if isinstance(v, (np.floating, float)) else v for k, v in params.items()}
+
+        if self.mode == "ldam_drw":
+            obj_fn = self._ldam_softmax_obj(margins, K)
+            booster = xgb_train(
+                params,
+                dtrain,
+                num_boost_round=200,
+                obj=obj_fn,
+                evals=[(dtrain, "train"), (dval, "val")],
+                early_stopping_rounds=50,
+                verbose_eval=False,
+            )
+            booster = xgb_train(
+                params,
+                dtrain,
+                num_boost_round=300,
+                obj=obj_fn,
+                evals=[(dtrain, "train_cb"), (dval, "val")],
+                early_stopping_rounds=50,
+                verbose_eval=False,
+                xgb_model=booster,
+            )
+        elif self.mode == "focal":
+            booster = xgb_train(
+                params,
+                dtrain,
+                num_boost_round=400,
+                obj=self._focal_softmax_obj(K, self.focal_gamma),
+                evals=[(dtrain, "train"), (dval, "val")],
+                early_stopping_rounds=50,
+                verbose_eval=False,
+            )
+        else:  # logit adjusted
+            booster = xgb_train(
+                params,
+                dtrain,
+                num_boost_round=400,
+                evals=[(dtrain, "train"), (dval, "val")],
+                early_stopping_rounds=50,
+                verbose_eval=False,
+            )
+        self.booster = booster
