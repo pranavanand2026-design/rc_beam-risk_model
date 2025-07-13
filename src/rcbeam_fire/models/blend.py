@@ -473,3 +473,99 @@ def tune_thresholds(proba: np.ndarray, y_true: np.ndarray, classes: List[str]) -
 
 def blend_probs(p_a: np.ndarray, p_b: np.ndarray, w: float) -> np.ndarray:
     return w * p_a + (1.0 - w) * p_b
+
+
+from sklearn.metrics import (
+    precision_recall_curve,
+    roc_auc_score,
+    roc_curve,
+    average_precision_score,
+    auc,
+)
+from sklearn.preprocessing import label_binarize
+
+
+def plot_multiclass_roc(
+    y_true: np.ndarray, proba: np.ndarray, classes: List[str], out_path: Path
+) -> Tuple[Optional[float], Dict[str, float]]:
+    if len(classes) <= 1:
+        return None, {}
+    try:
+        y_bin = label_binarize(y_true, classes=np.arange(len(classes)))
+    except Exception:
+        return None, {}
+
+    plt.figure(figsize=(6, 5))
+    macro_auc = None
+    try:
+        macro_auc = roc_auc_score(y_true, proba, multi_class="ovr", average="macro")
+    except Exception:
+        pass
+
+    per_class_auc: Dict[str, float] = {}
+    for idx, cname in enumerate(classes):
+        try:
+            fpr, tpr, _ = roc_curve(y_bin[:, idx], proba[:, idx])
+            auc_val = auc(fpr, tpr)
+            plt.plot(fpr, tpr, label=f"{cname} (AUC={auc_val:.3f})")
+            per_class_auc[cname] = float(auc_val)
+        except ValueError:
+            continue
+
+    plt.plot([0, 1], [0, 1], "k--", label="Random")
+    if macro_auc is not None:
+        plt.title(f"ROC curve (macro AUC={macro_auc:.3f})")
+    else:
+        plt.title("ROC curve")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.legend(fontsize=8)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close()
+    return macro_auc, per_class_auc
+
+
+def plot_multiclass_pr(
+    y_true: np.ndarray, proba: np.ndarray, classes: List[str], out_path: Path
+) -> Tuple[Optional[float], Dict[str, float]]:
+    if len(classes) <= 1:
+        return None, {}
+    try:
+        y_bin = label_binarize(y_true, classes=np.arange(len(classes)))
+    except Exception:
+        return None, {}
+
+    plt.figure(figsize=(6, 5))
+    macro_ap = None
+    try:
+        macro_ap = average_precision_score(y_true, proba, average="macro")
+    except Exception:
+        try:
+            macro_ap = average_precision_score(y_bin, proba, average="macro")
+        except Exception:
+            macro_ap = None
+
+    per_class_ap: Dict[str, float] = {}
+    for idx, cname in enumerate(classes):
+        try:
+            precision, recall, _ = precision_recall_curve(y_bin[:, idx], proba[:, idx])
+            ap = auc(recall, precision)
+            plt.plot(recall, precision, label=f"{cname} (AP={ap:.3f})")
+            per_class_ap[cname] = float(ap)
+        except ValueError:
+            continue
+
+    baseline = y_bin.mean(axis=0).mean() if np.any(y_bin) else 0.0
+    plt.hlines(baseline, 0, 1, colors="gray", linestyles="--", label="Baseline")
+    if macro_ap is not None:
+        plt.title(f"Precision-Recall curve (macro AP={macro_ap:.3f})")
+    else:
+        plt.title("Precision-Recall curve")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.legend(fontsize=8)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close()
+    return macro_ap, per_class_ap
