@@ -569,3 +569,98 @@ def plot_multiclass_pr(
     plt.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close()
     return macro_ap, per_class_ap
+
+
+def plot_topk_accuracy(
+    y_true: np.ndarray, proba: np.ndarray, classes: List[str], out_path: Path, ks: Tuple[int, ...] = (1, 2, 3)
+) -> Dict[int, float]:
+    ks = tuple(k for k in ks if 0 < k <= proba.shape[1])
+    if not ks:
+        return {}
+    sorted_idx = np.argsort(proba, axis=1)[:, ::-1]
+    scores: Dict[int, float] = {}
+    for k in ks:
+        hits = np.any(sorted_idx[:, :k] == y_true[:, None], axis=1)
+        scores[k] = float(np.mean(hits))
+
+    plt.figure(figsize=(5, 4))
+    labels = [f"Top-{k}" for k in ks]
+    values = [scores[k] for k in ks]
+    plt.bar(labels, values, color="#1f77b4")
+    upper = min(1.05, max(values) + 0.1)
+    plt.ylim(0, upper)
+    for i, val in enumerate(values):
+        plt.text(i, val + 0.02, f"{val:.2f}", ha="center", va="bottom")
+    plt.ylabel("Accuracy")
+    plt.title("Top-K accuracy")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close()
+    return scores
+
+
+def plot_weight_sweep(tuning_rows: List[Dict], out_path: Path) -> None:
+    if not tuning_rows:
+        return
+    frame = pd.DataFrame(tuning_rows)
+    if frame.empty:
+        return
+    frame = frame.sort_values("w_xgb")
+    plt.figure(figsize=(5.5, 4.0))
+    plt.plot(frame["w_xgb"], frame["macro_f1"], marker="o", color="#2ca02c")
+    for _, row in frame.iterrows():
+        txt_parts = []
+        for cname, val in row.get("thresholds", {}).items():
+            txt_parts.append(f"{cname.split()[0]}={val:.2f}")
+        if not txt_parts:
+            continue
+        plt.annotate(
+            ", ".join(txt_parts),
+            xy=(row["w_xgb"], row["macro_f1"]),
+            xytext=(5, 5),
+            textcoords="offset points",
+            fontsize=8,
+        )
+    plt.xlabel("XGB weight in blend (w)")
+    plt.ylabel("Macro F1")
+    plt.title("Blend weight vs macro F1")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close()
+
+
+def plot_threshold_sweep(tuning_rows: List[Dict], classes: List[str], out_path: Path) -> None:
+    if not tuning_rows:
+        return
+    frame = pd.DataFrame(tuning_rows)
+    if frame.empty or "thresholds" not in frame.columns:
+        return
+    frame = frame.sort_values("w_xgb")
+    long_records: List[Dict[str, float]] = []
+    for _, row in frame.iterrows():
+        thresholds = row.get("thresholds", {})
+        for cname in classes:
+            if cname not in thresholds:
+                continue
+            long_records.append(
+                {
+                    "class": cname,
+                    "w_xgb": float(row["w_xgb"]),
+                    "threshold": float(thresholds[cname]),
+                }
+            )
+    if not long_records:
+        return
+    long_df = pd.DataFrame(long_records)
+    plt.figure(figsize=(5.5, 4.0))
+    for cname, grp in long_df.groupby("class"):
+        grp = grp.sort_values("w_xgb")
+        plt.plot(grp["w_xgb"], grp["threshold"], marker="o", label=cname)
+    plt.xlabel("XGB weight in blend (w)")
+    plt.ylabel("Probability threshold")
+    plt.title("Per-class threshold tuning")
+    plt.ylim(0.2, 0.7)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close()
