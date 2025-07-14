@@ -664,3 +664,133 @@ def plot_threshold_sweep(tuning_rows: List[Dict], classes: List[str], out_path: 
     plt.tight_layout()
     plt.savefig(out_path, dpi=200, bbox_inches="tight")
     plt.close()
+
+
+from sklearn.calibration import calibration_curve
+from sklearn.isotonic import IsotonicRegression
+
+
+def fit_isotonic_calibrators(
+    proba: np.ndarray, y_true: np.ndarray, classes: List[str]
+) -> Tuple[np.ndarray, Dict[str, IsotonicRegression]]:
+    calibrators: Dict[str, IsotonicRegression] = {}
+    calibrated_cols = []
+    for idx, cname in enumerate(classes):
+        iso = IsotonicRegression(out_of_bounds="clip")
+        iso.fit(proba[:, idx], (y_true == idx).astype(int))
+        calibrators[cname] = iso
+        calibrated_cols.append(iso.predict(proba[:, idx]))
+    calibrated = np.column_stack(calibrated_cols)
+    row_sums = calibrated.sum(axis=1, keepdims=True)
+    zero_mask = row_sums[:, 0] <= 0
+    calibrated[~zero_mask] = calibrated[~zero_mask] / row_sums[~zero_mask]
+    if np.any(zero_mask):
+        calibrated[zero_mask] = 1.0 / len(classes)
+    return calibrated, calibrators
+
+
+def apply_calibrators(
+    proba: np.ndarray, calibrators: Dict[str, IsotonicRegression], classes: List[str]
+) -> np.ndarray:
+    if not calibrators:
+        return proba
+    calibrated_cols = []
+    for idx, cname in enumerate(classes):
+        iso = calibrators.get(cname)
+        if iso is not None:
+            calibrated_cols.append(iso.predict(proba[:, idx]))
+        else:
+            calibrated_cols.append(proba[:, idx])
+    calibrated = np.column_stack(calibrated_cols)
+    row_sums = calibrated.sum(axis=1, keepdims=True)
+    zero_mask = row_sums[:, 0] <= 0
+    calibrated[~zero_mask] = calibrated[~zero_mask] / row_sums[~zero_mask]
+    if np.any(zero_mask):
+        calibrated[zero_mask] = 1.0 / len(classes)
+    return calibrated
+
+
+def _expected_calibration_error(probs: np.ndarray, true: np.ndarray, n_bins: int = 10) -> float:
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    total = len(probs)
+    if total == 0:
+        return float("nan")
+    ece = 0.0
+    for i in range(n_bins):
+        left, right = bins[i], bins[i + 1]
+        if i == n_bins - 1:
+            mask = (probs >= left) & (probs <= right)
+        else:
+            mask = (probs >= left) & (probs < right)
+        if not np.any(mask):
+            continue
+        conf = probs[mask].mean()
+        acc = true[mask].mean()
+        ece += np.abs(acc - conf) * mask.sum()
+    return ece / total
+
+
+def compute_calibration_stats(
+    y_true: np.ndarray, proba: np.ndarray, classes: List[str], n_bins: int = 10
+) -> Tuple[List[Tuple[str, np.ndarray, np.ndarray]], Dict[str, float], Dict[str, float]]:
+    curves: List[Tuple[str, np.ndarray, np.ndarray]] = []
+    ece_per_class: Dict[str, float] = {}
+    brier_per_class: Dict[str, float] = {}
+    for idx, cname in enumerate(classes):
+        probs = proba[:, idx]
+        labels = (y_true == idx).astype(int)
+        if probs.size == 0:
+            continue
+        try:
+            frac_pos, mean_pred = calibration_curve(labels, probs, n_bins=n_bins, strategy="uniform")
+        except ValueError:
+            frac_pos, mean_pred = np.array([]), np.array([])
+        curves.append((cname, mean_pred, frac_pos))
+        ece_val = _expected_calibration_error(probs, labels, n_bins=n_bins)
+        brier_val = float(np.mean((probs - labels) ** 2))
+        ece_per_class[cname] = float(ece_val) if np.isfinite(ece_val) else float("nan")
+        brier_per_class[cname] = brier_val
+    return curves, ece_per_class, brier_per_class
+
+
+def plot_reliability_diagram(
+    curves: List[Tuple[str, np.ndarray, np.ndarray]], out_path: Path, title: str = "Reliability Diagram"
+) -> None:
+    plt.figure(figsize=(5.5, 4.5))
+    plotted = False
+    for cname, mean_pred, frac_pos in curves:
+        if mean_pred.size == 0 or frac_pos.size == 0:
+            continue
+        plotted = True
+        plt.plot(mean_pred, frac_pos, marker="o", label=cname)
+    plt.plot([0, 1], [0, 1], linestyle="--", color="gray", alpha=0.7)
+    plt.xlabel("Predicted probability")
+    plt.ylabel("Observed frequency")
+    plt.title(title)
+    if plotted:
+        plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close()
+
+
+def plot_probability_histograms(
+    proba: np.ndarray, classes: List[str], out_path: Path, bins: int = 10
+) -> None:
+    n_classes = len(classes)
+    fig, axes = plt.subplots(1, n_classes, figsize=(4.0 * n_classes, 3.2), sharey=True)
+    if n_classes == 1:
+        axes = [axes]
+    for idx, cname in enumerate(classes):
+        ax = axes[idx]
+        ax.hist(proba[:, idx], bins=np.linspace(0.0, 1.0, bins + 1), color="#1f77b4", edgecolor="white")
+        ax.set_title(cname)
+        ax.set_xlabel("Probability")
+        if idx == 0:
+            ax.set_ylabel("Count")
+        ax.set_xlim(0.0, 1.0)
+    fig.suptitle("Post-calibration probability distribution", fontsize=12)
+    fig.tight_layout()
+    fig.subplots_adjust(top=0.85)
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
