@@ -20,3 +20,10 @@ name and column mapping are configured in `config.yaml`.
 
 1. **Scan** — `python scripts/01_scan.py` — EDA summary and visualisations
 2. **Preprocess** — `python scripts/02_preprocess.py` — clean and persist data
+3. **Train classifier** — `python scripts/05_train_hybrid.py` — XGBoost + LDAM hybrid
+
+## Classifier
+
+The hybrid classifier blends a vanilla XGBoost model with a custom LDAM-DRW
+objective to handle class imbalance in beam failure modes. Isotonic calibration
+and per-class threshold tuning are applied post-training.
