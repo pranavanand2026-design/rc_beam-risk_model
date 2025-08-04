@@ -89,3 +89,70 @@ def _prepare_matrix(df: pd.DataFrame, target_col: str) -> Tuple[pd.DataFrame, pd
     y = pd.to_numeric(df[target_col], errors="coerce")
     mask = (~X.isna().any(axis=1)) & (~y.isna())
     return X.loc[mask], y.loc[mask]
+
+
+import matplotlib.pyplot as plt
+
+
+def _plot_importance(model, feature_names: List[str], out_png: Path, title: str = "Feature importance"):
+    try:
+        if hasattr(model, "feature_importances_"):
+            imp = np.array(model.feature_importances_, dtype=float)
+            order = np.argsort(imp)[::-1][:20]
+            plt.figure(figsize=(7, 6))
+            plt.barh(np.array(feature_names)[order][::-1], imp[order][::-1])
+            plt.title(title)
+            plt.tight_layout()
+            plt.savefig(out_png, dpi=200, bbox_inches="tight")
+            plt.close()
+    except Exception:
+        pass
+
+
+def _plot_parity(y_true, y_pred, out_png: Path, title: str = "Predicted vs Actual FRT (min)"):
+    plt.figure(figsize=(5, 5))
+    plt.scatter(y_true, y_pred, s=8)
+    lo = float(min(np.min(y_true), np.min(y_pred)))
+    hi = float(max(np.max(y_true), np.max(y_pred)))
+    plt.plot([lo, hi], [lo, hi])
+    plt.xlabel("Actual FRT (min)")
+    plt.ylabel("Predicted FRT (min)")
+    plt.title(title)
+    plt.tight_layout()
+    plt.savefig(out_png, dpi=200, bbox_inches="tight")
+    plt.close()
+
+
+def _plot_residuals(y_true, y_pred, out_png: Path):
+    residuals = y_true - y_pred
+    plt.figure(figsize=(6, 4))
+    plt.scatter(y_pred, residuals, s=10, alpha=0.7)
+    plt.axhline(0, color="gray", linestyle="--")
+    plt.xlabel("Predicted FRT (min)")
+    plt.ylabel("Residual (Actual - Predicted)")
+    plt.title("Residual plot")
+    plt.tight_layout()
+    plt.savefig(out_png, dpi=200, bbox_inches="tight")
+    plt.close()
+
+
+def _plot_error_summary(train_metrics: Dict[str, float], valid_metrics: Dict[str, float], out_png: Path):
+    labels = ["MAE", "RMSE"]
+    train_vals = [train_metrics.get("MAE", 0.0), train_metrics.get("RMSE", 0.0)]
+    valid_vals = [valid_metrics.get("MAE", 0.0), valid_metrics.get("RMSE", 0.0)]
+    x = np.arange(len(labels))
+    width = 0.35
+    plt.figure(figsize=(5, 4))
+    plt.bar(x - width / 2, train_vals, width, label="Train")
+    plt.bar(x + width / 2, valid_vals, width, label="Valid")
+    plt.xticks(x, labels)
+    plt.ylabel("Minutes")
+    plt.title("Error summary")
+    plt.legend()
+    for idx, val in enumerate(train_vals):
+        plt.text(x[idx] - width / 2, val + 0.5, f"{val:.1f}", ha="center", va="bottom")
+    for idx, val in enumerate(valid_vals):
+        plt.text(x[idx] + width / 2, val + 0.5, f"{val:.1f}", ha="center", va="bottom")
+    plt.tight_layout()
+    plt.savefig(out_png, dpi=200, bbox_inches="tight")
+    plt.close()
