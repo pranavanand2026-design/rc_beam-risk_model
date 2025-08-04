@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -84,16 +85,6 @@ def _reg_metrics(y_true, y_pred) -> Dict[str, float]:
     }
 
 
-def _prepare_matrix(df: pd.DataFrame, target_col: str) -> Tuple[pd.DataFrame, pd.Series]:
-    X = pd.DataFrame({c: pd.to_numeric(df.get(c, np.nan), errors="coerce") for c in RAW_FEATURES})
-    y = pd.to_numeric(df[target_col], errors="coerce")
-    mask = (~X.isna().any(axis=1)) & (~y.isna())
-    return X.loc[mask], y.loc[mask]
-
-
-import matplotlib.pyplot as plt
-
-
 def _plot_importance(model, feature_names: List[str], out_png: Path, title: str = "Feature importance"):
     try:
         if hasattr(model, "feature_importances_"):
@@ -156,3 +147,101 @@ def _plot_error_summary(train_metrics: Dict[str, float], valid_metrics: Dict[str
     plt.tight_layout()
     plt.savefig(out_png, dpi=200, bbox_inches="tight")
     plt.close()
+
+
+@dataclass
+class FRTResult:
+    model_name: str
+    metrics_train: Dict[str, float]
+    metrics_valid: Dict[str, float]
+    model_path: Path
+    metrics_path: Path
+    parity_plot: Path
+    importance_plot: Path
+    residual_plot: Path
+    error_plot: Path
+
+
+def _prepare_matrix(df: pd.DataFrame, target_col: str) -> Tuple[pd.DataFrame, pd.Series]:
+    X = pd.DataFrame({c: pd.to_numeric(df.get(c, np.nan), errors="coerce") for c in RAW_FEATURES})
+    y = pd.to_numeric(df[target_col], errors="coerce")
+    mask = (~X.isna().any(axis=1)) & (~y.isna())
+    return X.loc[mask], y.loc[mask]
+
+
+def train_frt_regressor(
+    config_path: str | Path | None = None,
+    target_col: str = "FR",
+) -> FRTResult:
+    cfg = load_config(config_path)
+    paths_cfg = cfg["paths"]
+    outs_dir = Path(paths_cfg["outputs"]) / "tables"
+    models_dir = Path(paths_cfg.get("models", "models")) / "checkpoints"
+    figs_dir = outs_dir.parent / "figs"
+    ensure_dirs(outs_dir, models_dir, figs_dir)
+
+    df = load_processed_dataset(paths_cfg)
+    if target_col not in df.columns:
+        raise ValueError(f"Target column '{target_col}' not found in dataset.")
+
+    X, y = _prepare_matrix(df, target_col)
+
+    try:
+        bins = pd.qcut(y, q=5, labels=False, duplicates="drop")
+        X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=bins)
+    except Exception:
+        X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = _make_lgbm() or _make_xgb() or _make_ridge()
+    model_name = model.__class__.__name__
+    model.fit(X_tr, y_tr)
+
+    y_hat_tr = model.predict(X_tr)
+    y_hat_val = model.predict(X_val)
+    metrics_train = _reg_metrics(y_tr, y_hat_tr)
+    metrics_valid = _reg_metrics(y_val, y_hat_val)
+
+    import joblib
+
+    pack = {"model": model, "features": RAW_FEATURES, "target": target_col}
+    model_path = models_dir / "frt_regressor.joblib"
+    joblib.dump(pack, model_path)
+
+    metrics_path = outs_dir / "frt_raw_metrics.json"
+    with open(metrics_path, "w") as f:
+        json.dump({"model": model_name, "train": metrics_train, "valid": metrics_valid}, f, indent=2)
+
+    importance_plot = figs_dir / "frt_raw_feature_importance.png"
+    parity_plot = figs_dir / "frt_raw_parity.png"
+    residual_plot = figs_dir / "frt_raw_residuals.png"
+    error_plot = figs_dir / "frt_error_summary.png"
+    _plot_importance(model, RAW_FEATURES, importance_plot)
+    _plot_parity(y_val, y_hat_val, parity_plot)
+    _plot_residuals(y_val, y_hat_val, residual_plot)
+    _plot_error_summary(metrics_train, metrics_valid, error_plot)
+
+    print("\n=== FRT REGRESSOR (RAW-ONLY) ===")
+    print(f"Model: {model_name}")
+    print(f"Train → MAE={metrics_train['MAE']:.2f}  RMSE={metrics_train['RMSE']:.2f}  R2={metrics_train['R2']:.3f}")
+    print(f"Valid → MAE={metrics_valid['MAE']:.2f}  RMSE={metrics_valid['RMSE']:.2f}  R2={metrics_valid['R2']:.3f}")
+    print(f"Saved model → {model_path}")
+    print(f"Metrics     → {metrics_path}")
+    print(f"Parity plot → {parity_plot}")
+    print(f"Residuals   → {residual_plot}")
+    print(f"Error bars  → {error_plot}")
+    print(f"Importance  → {importance_plot}")
+
+    return FRTResult(
+        model_name=model_name,
+        metrics_train=metrics_train,
+        metrics_valid=metrics_valid,
+        model_path=model_path,
+        metrics_path=metrics_path,
+        parity_plot=parity_plot,
+        importance_plot=importance_plot,
+        residual_plot=residual_plot,
+        error_plot=error_plot,
+    )
+
+
+__all__ = ["train_frt_regressor", "FRTResult", "RAW_FEATURES"]
