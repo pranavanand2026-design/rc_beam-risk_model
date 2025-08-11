@@ -73,3 +73,21 @@ class ClassifierAdapter:
             mask = proba[:, ci] >= thr
             pred_idx[mask] = ci
         return pred_idx, proba
+
+
+@dataclass
+class RegressorAdapter:
+    pack: Dict
+
+    def __post_init__(self):
+        self.model = self.pack["model"]
+        self.features = self.pack["features"]
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        X = X[self.features].copy()
+        for col in X.columns:
+            X[col] = pd.to_numeric(X[col], errors="coerce")
+        return self.model.predict(X)
+
+
+__all__ = ["ClassifierAdapter", "RegressorAdapter"]
