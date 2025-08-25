@@ -23,6 +23,14 @@ name and column mapping are configured in `config.yaml`.
 3. **Train classifier** — `python scripts/05_train_hybrid.py` — XGBoost + LDAM hybrid
 4. **Train regressor** — `python scripts/06_train_frt.py` — LightGBM fire resistance time model
 
+## Cross-validation & ablation
+
+```bash
+python scripts/05_train_hybrid.py --cv          # grouped 5-fold CV
+python scripts/05_train_hybrid.py --ablate       # objective/resampler grid search
+python scripts/05_train_hybrid.py --bootstrap 1000  # bootstrap CIs
+```
+
 ## Model adapters
 
 `rcbeam_fire.utils.model_adapters` provides `ClassifierAdapter` and `RegressorAdapter`
