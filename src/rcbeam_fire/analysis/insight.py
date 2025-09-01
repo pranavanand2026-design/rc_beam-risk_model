@@ -151,3 +151,62 @@ def _friendly_label(feature: str) -> str:
 
 def _unit(feature: str) -> str:
     return FEATURE_UNITS.get(feature, "")
+
+
+# ---------------------------------------------------------------------------
+# Recommendation dataclasses
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ScenarioSummary:
+    exposure: float
+    margin: float
+    threshold: float
+    frt_pred: float
+    gap_minutes: float
+    pred_mode: str
+    prob_no_failure: float
+
+    @property
+    def verdict(self) -> str:
+        if self.gap_minutes >= 0:
+            return f"Meets scenario (+{self.gap_minutes:.1f} min margin)"
+        return f"At risk ({self.gap_minutes:.1f} min short)"
+
+
+@dataclass
+class Recommendation:
+    feature: str
+    title: str
+    action: str
+    current: float
+    target: float
+    delta_value: float
+    expected_frt: float
+    expected_delta_frt: float
+    expected_prob_no_fail: float
+    expected_delta_prob: float
+    new_mode: str
+    rationale: str
+    priority: float
+    unit: str
+
+
+@dataclass
+class CombinationRecommendation:
+    features: List[str]
+    actions: List[str]
+    expected_frt: float
+    expected_delta_frt: float
+    expected_prob_no_fail: float
+    expected_delta_prob: float
+    predicted_mode: str
+
+
+@dataclass
+class ActionPlan:
+    scenario: ScenarioSummary
+    recommendations: List[Recommendation]
+    references: Dict[str, Dict[str, float]]
+    notes: List[str]
+    combination: Optional[CombinationRecommendation] = None
