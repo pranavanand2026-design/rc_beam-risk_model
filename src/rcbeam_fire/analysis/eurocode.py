@@ -295,3 +295,4 @@ __all__ = [
     "evaluate_compliance",
     "EurocodeAdjustment",
 ]
+
