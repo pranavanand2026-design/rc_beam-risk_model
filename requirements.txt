@@ -15,3 +15,6 @@ imbalanced-learn==0.12.3
 ### IO / plotting
 seaborn==0.13.2
 pyarrow>=12.0.0
+
+### Interpretability
+shap==0.46.0

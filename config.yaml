@@ -2,8 +2,25 @@ paths:
   raw: data/raw
   processed: data/processed
   outputs: outputs
-  models: models
+  models: models 
 data:
   file: dataset.xlsx
   sheet: 02_NumericaModelData
   target_col: LimitState
+
+analysis:
+  exposure_minutes: 90          # default fire exposure scenario for case sheets
+  margin_minutes: 10            # safety margin added to exposure
+  objective_weights:
+    alpha_delta_p_no_fail: 1.0  # weight for Δ P(No Failure)
+    beta_delta_frt: 0.02        # weight per minute of Δ FRT
+    gamma_penalty_strength: 0.5 # penalty weight if Strength prob increases
+  bounds:                        # *Adjust to your project policy/Eurocode-aligned ranges*
+    Cc:        {min: 20, max: 60, step: 5}       # mm
+    tins:      {min: 0,  max: 110, step: 5}      # mm
+    hi:        {min: 0,  max: 120, step: 5}      # mm
+    LR:        {min: 0.2, max: 1.0, step: 0.05}  # –
+    As:        {min: 0.8, max: 1.5, step: 0.05, scale: "x"}   # multiplicative
+    Af:        {min: 0.8, max: 1.5, step: 0.05, scale: "x"}   # multiplicative
+  # features allowed to change (choose what you want to expose in the UI)
+  adjustable_features: ["Cc","tins","hi","LR","As","Af"]
