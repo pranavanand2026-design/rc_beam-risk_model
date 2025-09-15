@@ -22,6 +22,7 @@ name and column mapping are configured in `config.yaml`.
 2. **Preprocess** — `python scripts/02_preprocess.py` — clean and persist data
 3. **Train classifier** — `python scripts/05_train_hybrid.py` — XGBoost + LDAM hybrid
 4. **Train regressor** — `python scripts/06_train_frt.py` — LightGBM fire resistance time model
+5. **Case analysis** — `python scripts/12_case_analyzer.py --config config.yaml --beam I1_B1`
 
 ## Cross-validation & ablation
 
@@ -29,6 +30,14 @@ name and column mapping are configured in `config.yaml`.
 python scripts/05_train_hybrid.py --cv          # grouped 5-fold CV
 python scripts/05_train_hybrid.py --ablate       # objective/resampler grid search
 python scripts/05_train_hybrid.py --bootstrap 1000  # bootstrap CIs
+```
+
+## Case analysis
+
+The case analyzer generates JSON reports with SHAP-informed recommendations:
+
+```bash
+python scripts/12_case_analyzer.py --config config.yaml --beam I1_B1
 ```
 
 ## Model adapters
