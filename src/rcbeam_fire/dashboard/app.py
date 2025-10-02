@@ -152,6 +152,15 @@ def main() -> None:
         manual_vals[feat] = manual_cols[i % len(manual_cols)].slider(
             feat, float(lo), float(hi), float(cur), key=f"pg_{feat}",
         )
+    if st.button("Run what-if prediction"):
+        synth = row_series.copy()
+        for feat, val in manual_vals.items():
+            synth[feat] = val
+        wif_mode, wif_probs, wif_frt = predict_case(synth, clf, frt)
+        c1, c2 = st.columns(2)
+        c1.metric("What-if Mode", wif_mode)
+        c2.metric("What-if FRT", f"{wif_frt:.1f} min")
+        )
 
     st.subheader("Action plan")
     scenario_dict = {"exposure": exposure, "margin": margin, "threshold": threshold, "gap_minutes": gap}
