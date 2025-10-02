@@ -141,6 +141,18 @@ def main() -> None:
     st.subheader("Class probabilities")
     st.bar_chart(prob_series)
 
+    # ---- Design Playground ----
+    st.subheader("Design playground")
+    st.info("Adjust beam parameters below to explore what-if scenarios.")
+    manual_cols = st.columns(min(len(adjustable), 3))
+    manual_vals = {}
+    for i, feat in enumerate(adjustable):
+        lo, hi = feature_ranges.get(feat, (0.0, 100.0))
+        cur = float(row_series.get(feat, (lo + hi) / 2))
+        manual_vals[feat] = manual_cols[i % len(manual_cols)].slider(
+            feat, float(lo), float(hi), float(cur), key=f"pg_{feat}",
+        )
+
     st.subheader("Action plan")
     scenario_dict = {"exposure": exposure, "margin": margin, "threshold": threshold, "gap_minutes": gap}
     action_plan = build_case_action_plan(
