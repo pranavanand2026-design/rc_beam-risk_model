@@ -18,29 +18,20 @@ name and column mapping are configured in `config.yaml`.
 
 ## Pipeline stages
 
-1. **Scan** — `python scripts/01_scan.py` — EDA summary and visualisations
-2. **Preprocess** — `python scripts/02_preprocess.py` — clean and persist data
-3. **Train classifier** — `python scripts/05_train_hybrid.py` — XGBoost + LDAM hybrid
-4. **Train regressor** — `python scripts/06_train_frt.py` — LightGBM fire resistance time model
+1. **Scan** — `python scripts/01_scan.py`
+2. **Preprocess** — `python scripts/02_preprocess.py`
+3. **Train classifier** — `python scripts/05_train_hybrid.py`
+4. **Train regressor** — `python scripts/06_train_frt.py`
 5. **Case analysis** — `python scripts/12_case_analyzer.py --config config.yaml --beam I1_B1`
+6. **Dashboard** — `streamlit run src/rcbeam_fire/dashboard/app.py`
 
-## Cross-validation & ablation
+## Dashboard
 
-```bash
-python scripts/05_train_hybrid.py --cv          # grouped 5-fold CV
-python scripts/05_train_hybrid.py --ablate       # objective/resampler grid search
-python scripts/05_train_hybrid.py --bootstrap 1000  # bootstrap CIs
-```
-
-## Case analysis
-
-The case analyzer generates JSON reports with SHAP-informed recommendations:
+Launch the interactive design studio:
 
 ```bash
-python scripts/12_case_analyzer.py --config config.yaml --beam I1_B1
+streamlit run src/rcbeam_fire/dashboard/app.py
 ```
 
-## Model adapters
-
-`rcbeam_fire.utils.model_adapters` provides `ClassifierAdapter` and `RegressorAdapter`
-wrappers for standardised inference across blend and single-model packs.
+Features: beam selection, scenario inputs, probability display, action plan,
+and a design playground with configurable parameter sliders.
