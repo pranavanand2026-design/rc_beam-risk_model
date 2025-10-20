@@ -19,3 +19,6 @@ streamlit==1.37.0
 
 ### Interpretability
 shap==0.46.0
+
+### Testing
+pytest>=7.0
