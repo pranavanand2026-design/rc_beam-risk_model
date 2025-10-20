@@ -25,13 +25,16 @@ name and column mapping are configured in `config.yaml`.
 5. **Case analysis** — `python scripts/12_case_analyzer.py --config config.yaml --beam I1_B1`
 6. **Dashboard** — `streamlit run src/rcbeam_fire/dashboard/app.py`
 
-## Dashboard
-
-Launch the interactive design studio:
+## Testing
 
 ```bash
-streamlit run src/rcbeam_fire/dashboard/app.py
+pytest tests/ -v
 ```
 
-Features: beam selection, scenario inputs, probability display, action plan,
-and a design playground with configurable parameter sliders.
+Tests cover:
+- Schema validation (`test_schema.py`)
+- Classification/regression metric thresholds (`test_metrics.py`)
+- Case analyzer payload structure (`test_case_analyzer.py`)
+- Dashboard resource loading (`test_dashboard.py`)
+
+See `docs/TESTING_PLAN.md` for the expansion roadmap.
