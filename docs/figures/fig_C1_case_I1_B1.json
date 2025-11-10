@@ -1,0 +1,138 @@
+{
+  "beam_id": "I1_ B1",
+  "pred_mode": "Deflection Failure",
+  "mode_probs": {
+    "Deflection Failure": 0.9966046214103699,
+    "No Failure": 4.619595529220533e-06,
+    "Strength Failure": 0.0033907501492649317
+  },
+  "frt_minutes": 44.21,
+  "scenario": {
+    "exposure": 90.0,
+    "margin": 10.0,
+    "threshold": 100.0,
+    "gap_minutes": -55.793704986572266,
+    "verdict": "At risk (-55.8 min short)",
+    "prob_no_failure": 4.619595529220533e-06
+  },
+  "top_mode_features": [
+    "Index(['Ac', 'L', 'Cc'], dtype='object')",
+    "Index(['Ac', 'L', 'Cc'], dtype='object')",
+    "Index(['Cc', 'L', 'Ac'], dtype='object')",
+    "Index(['Cc', 'L', 'Ac'], dtype='object')",
+    "Index(['Ac', 'L', 'Cc'], dtype='object')"
+  ],
+  "top_frt_features": [
+    "As",
+    "hi",
+    "Cc",
+    "Af",
+    "LR",
+    "Ld",
+    "tins",
+    "Ac"
+  ],
+  "action_plan": {
+    "recommendations": [
+      {
+        "feature": "hi",
+        "title": "Side insulation depth",
+        "action": "Increase Side insulation depth from 0.00 mm to ~114.00 mm",
+        "current": 0.0,
+        "target": 114.0,
+        "delta_value": 114.0,
+        "expected_frt": 134.10614013671875,
+        "expected_delta_frt": 89.89984512329102,
+        "expected_prob_no_fail": 0.0007484729867428541,
+        "expected_delta_prob": 0.0007438533912136336,
+        "new_mode": "Deflection Failure",
+        "rationale": "strong influence on predicted fire resistance time; currently below median for safe beams",
+        "priority": 2.0142655249658987,
+        "unit": "mm"
+      },
+      {
+        "feature": "As",
+        "title": "Steel reinforcement area",
+        "action": "Increase Steel reinforcement area from 63.31 mm\u00b2 to ~854.64 mm\u00b2",
+        "current": 63.31,
+        "target": 854.64,
+        "delta_value": 791.3299999999999,
+        "expected_frt": 125.3745346069336,
+        "expected_delta_frt": 81.16823959350586,
+        "expected_prob_no_fail": 0.00018913013627752662,
+        "expected_delta_prob": 0.00018451054074830608,
+        "new_mode": "Deflection Failure",
+        "rationale": "strong influence on predicted fire resistance time; currently below median for safe beams",
+        "priority": 1.8555301125773962,
+        "unit": "mm\u00b2"
+      },
+      {
+        "feature": "Cc",
+        "title": "Concrete cover",
+        "action": "Increase Concrete cover from 10.00 mm to ~38.00 mm",
+        "current": 10.0,
+        "target": 38.0,
+        "delta_value": 28.0,
+        "expected_frt": 103.395751953125,
+        "expected_delta_frt": 59.189456939697266,
+        "expected_prob_no_fail": 1.3875296644982882e-05,
+        "expected_delta_prob": 9.25570111576235e-06,
+        "new_mode": "Deflection Failure",
+        "rationale": "strong influence on predicted fire resistance time; currently below median for safe beams",
+        "priority": 1.4608996587226595,
+        "unit": "mm"
+      }
+    ],
+    "notes": [],
+    "reference_stats": {
+      "Cc": {
+        "median": 38.0,
+        "p25": 38.0,
+        "p75": 38.0,
+        "p90": 38.0,
+        "min": 25.0,
+        "max": 38.0
+      },
+      "tins": {
+        "median": 38.0,
+        "p25": 25.0,
+        "p75": 38.0,
+        "p90": 38.0,
+        "min": 19.0,
+        "max": 38.0
+      },
+      "hi": {
+        "median": 95.0,
+        "p25": 76.0,
+        "p75": 114.0,
+        "p90": 114.0,
+        "min": 0.0,
+        "max": 114.0
+      },
+      "LR": {
+        "median": 45.65,
+        "p25": 43.97,
+        "p75": 47.97,
+        "p90": 53.27,
+        "min": 26.97,
+        "max": 72.25
+      },
+      "As": {
+        "median": 593.87,
+        "p25": 569.76,
+        "p75": 854.64,
+        "p90": 854.64,
+        "min": 213.88,
+        "max": 854.64
+      },
+      "Af": {
+        "median": 112.2,
+        "p25": 40.8,
+        "p75": 200.0,
+        "p90": 270.0,
+        "min": 7.7,
+        "max": 629.3
+      }
+    }
+  }
+}
