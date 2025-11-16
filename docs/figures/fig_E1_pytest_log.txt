@@ -1,0 +1,8 @@
+...........                                                              [100%]
+=============================== warnings summary ===============================
+tests/test_case_analyzer.py: 909 warnings
+  /Users/pranavanand/rc-beam_2/SOFT3888_TU08_04/prod_pipeline/rcbeam-fire/.venv/lib/python3.12/site-packages/shap/plots/colors/_colorconv.py:819: DeprecationWarning: Converting `np.inexact` or `np.floating` to a dtype is deprecated. The current result is `float64` which is not strictly correct.
+    if np.issubdtype(dtype_in, np.dtype(dtype).type):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+11 passed, 909 warnings in 2.62s

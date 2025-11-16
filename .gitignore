@@ -36,3 +36,8 @@ outputs/figs/*.png
 outputs/tables/*.csv
 outputs/tables/*.json
 outputs/tables/*.txt
+
+# Temp / staging
+staging/
+temp_clone/
+build_repo.sh
