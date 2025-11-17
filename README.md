@@ -106,3 +106,9 @@ the pipeline scripts. See `models/README.md` for details.
 - [ ] Run `python scripts/run_pipeline.py` to generate all artefacts
 - [ ] Launch the dashboard with `streamlit run src/rcbeam_fire/dashboard/app.py`
 - [ ] Run `pytest tests/ -v` to verify acceptance thresholds
+
+## IDE hints
+
+For VS Code / Pyright users, `pyrightconfig.json` adds `src/` to the import
+search path so that `from rcbeam_fire.config import load_config` resolves
+without additional configuration.
