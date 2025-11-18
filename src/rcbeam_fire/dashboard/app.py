@@ -8,11 +8,6 @@ import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
-import sys
-import os
-
-# Add the src directory to Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from rcbeam_fire.analysis.insight import DOMAIN_TENDENCY, build_case_action_plan
 from rcbeam_fire.config import DEFAULT_CONFIG_PATH, load_config

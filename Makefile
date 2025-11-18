@@ -1,17 +1,21 @@
+PYTHON ?= python3
+VENV   := .venv
+BIN    := $(VENV)/bin
+
 .PHONY: setup run dashboard test clean
 
 setup:
-	python -m venv .venv
-	. .venv/bin/activate && pip install -e .
+	$(PYTHON) -m venv $(VENV)
+	$(BIN)/pip install -e .
 
 run:
-	python scripts/run_pipeline.py
+	$(BIN)/python scripts/run_pipeline.py
 
 dashboard:
-	streamlit run src/rcbeam_fire/dashboard/app.py
+	$(BIN)/streamlit run src/rcbeam_fire/dashboard/app.py
 
 test:
-	pytest tests/ -v
+	$(BIN)/pytest tests/ -v
 
 clean:
 	rm -rf data/processed/* models/checkpoints/*.joblib outputs/figs/* outputs/tables/*

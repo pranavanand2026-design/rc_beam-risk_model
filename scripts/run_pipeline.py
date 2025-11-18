@@ -24,11 +24,7 @@ import sys
 from pathlib import Path
 from typing import Iterable, Sequence
 
-SRC = Path(__file__).resolve().parents[1] / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
-
-from rcbeam_fire.config import load_config  # noqa: E402
+from rcbeam_fire.config import load_config
 
 
 def _run(step: Sequence[str]) -> None:

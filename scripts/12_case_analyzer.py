@@ -16,7 +16,6 @@ design (Section 2.2.4, component `12_case_analyzer.py`). Responsibilities:
 
 import argparse
 import json
-import sys
 import warnings
 from dataclasses import asdict
 from pathlib import Path
@@ -25,16 +24,11 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "src"
-if str(SRC) not in sys.path:
-    sys.path.insert(0, str(SRC))
-
-from rcbeam_fire.analysis.insight import DOMAIN_TENDENCY, build_case_action_plan  # noqa: E402
-from rcbeam_fire.analysis.eurocode import evaluate_compliance, pick_requirement  # noqa: E402
-from rcbeam_fire.config import load_config  # noqa: E402
-from rcbeam_fire.utils.io import ensure_dirs, load_processed_dataset  # noqa: E402
-from rcbeam_fire.utils.model_adapters import ClassifierAdapter, RegressorAdapter  # noqa: E402
+from rcbeam_fire.analysis.insight import DOMAIN_TENDENCY, build_case_action_plan
+from rcbeam_fire.analysis.eurocode import evaluate_compliance, pick_requirement
+from rcbeam_fire.config import load_config
+from rcbeam_fire.utils.io import ensure_dirs, load_processed_dataset
+from rcbeam_fire.utils.model_adapters import ClassifierAdapter, RegressorAdapter
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)

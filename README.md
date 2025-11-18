@@ -12,17 +12,18 @@ generates actionable design recommendations to improve fire safety.
 ```bash
 git clone https://github.com/<your-org>/rc_beam.git
 cd rc_beam
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+make setup        # creates venv, installs deps + package
 ```
 
 Place the dataset at `data/raw/dataset.xlsx`, then run the full pipeline:
 
 ```bash
-python scripts/run_pipeline.py
+make run          # runs full pipeline
+make dashboard    # launches Streamlit UI
+make test         # runs pytest suite
 ```
 
-Or run stages individually:
+Or run stages individually (inside the activated venv):
 
 ```bash
 python scripts/01_scan.py           # EDA: summary stats and visualisations
@@ -101,11 +102,11 @@ the pipeline scripts. See `models/README.md` for details.
 
 ## Hand-over checklist
 
-- [ ] Clone the repo and install dependencies
+- [ ] Clone the repo and run `make setup`
 - [ ] Place `dataset.xlsx` in `data/raw/`
-- [ ] Run `python scripts/run_pipeline.py` to generate all artefacts
-- [ ] Launch the dashboard with `streamlit run src/rcbeam_fire/dashboard/app.py`
-- [ ] Run `pytest tests/ -v` to verify acceptance thresholds
+- [ ] Run `make run` to generate all artefacts
+- [ ] Launch the dashboard with `make dashboard`
+- [ ] Run `make test` to verify acceptance thresholds
 
 ## IDE hints
 
