@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+.venv
+.git
+web/
+node_modules/
+temp_clone/
+outputs/
+experiments/
+*.md
+build_repo.sh
