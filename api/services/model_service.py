@@ -13,10 +13,15 @@ class ModelService:
         self.clf = clf
         self.frt = frt
 
+    def _make_row(self, features: Dict[str, float]) -> pd.DataFrame:
+        all_feats = set(self.clf.features) | set(self.frt.features)
+        full = {f: features.get(f, 0.0) for f in all_feats}
+        return pd.DataFrame([full])
+
     def predict(
         self, features: Dict[str, float]
     ) -> Tuple[str, Dict[str, float], float]:
-        row = pd.DataFrame([features])
+        row = self._make_row(features)
         pred_idx, proba = self.clf.predict_label(row)
         predicted_mode = self.clf.classes[int(pred_idx[0])]
         probabilities = {
@@ -26,7 +31,7 @@ class ModelService:
         return predicted_mode, probabilities, frt_minutes
 
     def predict_proba_array(self, features: Dict[str, float]) -> np.ndarray:
-        row = pd.DataFrame([features])
+        row = self._make_row(features)
         _, proba = self.clf.predict_label(row)
         return proba[0]
 

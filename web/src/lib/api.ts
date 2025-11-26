@@ -9,8 +9,9 @@ import type {
   PredictionResponse,
 } from "./types";
 
-// Use same-origin via Next.js rewrite proxy (no CORS overhead)
-const API_BASE = "";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://rcbeam-riskmodel-production.up.railway.app";
 
 async function fetchJSON<T>(
   path: string,
